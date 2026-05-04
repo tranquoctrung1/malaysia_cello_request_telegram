@@ -126,6 +126,12 @@ class APIClient:
 # Khởi tạo API client
 api_client = APIClient()
 
+def has_data(data_result) -> bool:
+    """Check GetDataMulti result has at least one non-empty stream"""
+    if not data_result or "error" in data_result:
+        return False
+    return any(isinstance(v, list) and len(v) > 0 for v in data_result.values())
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Gửi tin nhắn chào mừng khi người dùng bắt đầu."""
     await update.message.reply_text(
@@ -307,6 +313,8 @@ def format_site_data_simple(data):
             if not stream_ids:
                 return "No streamID found in channels"
             
+            print(stream_ids)
+            
             # Bước 3: Tính toán thời gian
             now = datetime.now()
             end_time = int(now.timestamp() * 1000)
@@ -324,6 +332,17 @@ def format_site_data_simple(data):
             }
 
             data_result = api_client.make_request("GetDataMulti", data_payload)
+
+            if not has_data(data_result):
+                # Retry với start_time lùi 1 năm
+                start_1year_for_api = (end_time - (365 * 24 * 3600 * 1000)) + (8 * 3600 * 1000)
+                data_result = api_client.make_request("GetDataMulti", {
+                    "streamIds": stream_ids,
+                    "start": start_1year_for_api,
+                    "end": end_time_for_api
+                })
+                if not has_data(data_result):
+                    data_result = {}
 
             result.append("\nChannels:")
             for i, channel in enumerate(data['Channels'][:10]):  # Giới hạn 10 channels
@@ -471,11 +490,25 @@ async def get_channel_data(site_id: str):
         logger.info(f"Calling GetDataMulti for {len(stream_ids)} streams, time range: {TIME_RANGE_HOURS} hour(s)")
         
         data_result = api_client.make_request("GetDataMulti", data_payload)
-        
+
         if data_result and "error" in data_result:
             error_msg = data_result.get("error", "Unknown error")
             return f"Error getting channel data: {error_msg}"
-        
+
+        if not has_data(data_result):
+            # Retry với start_time lùi 1 năm
+            start_1year_for_api = (end_time - (365 * 24 * 3600 * 1000)) + (8 * 3600 * 1000)
+            data_result = api_client.make_request("GetDataMulti", {
+                "streamIds": stream_ids,
+                "start": start_1year_for_api,
+                "end": end_time_for_api
+            })
+            if data_result and "error" in data_result:
+                error_msg = data_result.get("error", "Unknown error")
+                return f"Error getting channel data: {error_msg}"
+            if not has_data(data_result):
+                data_result = {}
+
         if not data_result:
             return f"No data returned for site {site_id}"
         
