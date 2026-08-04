@@ -8,11 +8,10 @@ REM xóa build cũ
 rmdir /s /q build
 rmdir /s /q dist
 
-REM build exe
+REM build exe (KHONG bundle .env - token phai o file .env canh exe, khong nam trong binary)
 pyinstaller ^
  --onefile ^
  --noconsole ^
- --add-data ".env;." ^
  main.py
 
 echo.

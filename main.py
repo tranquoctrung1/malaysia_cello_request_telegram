@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import requests
 import logging
@@ -10,8 +11,12 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 import time
 from typing import Dict, Any, Optional, Union
 
-# Tải biến môi trường từ file .env
-load_dotenv()
+# Tải biến môi trường từ file .env nằm cạnh exe (không bundle vào exe)
+if getattr(sys, 'frozen', False):
+    ENV_DIR = os.path.dirname(sys.executable)
+else:
+    ENV_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(ENV_DIR, '.env'))
 
 # Cấu hình từ file .env
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
